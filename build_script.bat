@@ -1,0 +1,1 @@
+gcc .\main.c -o httpshit.exe -lwsock32 -lWs2_32

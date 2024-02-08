@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Siema kurwa</title>
+        <script>
+            function addNew(){
+                var text = document.getElementById("text-area").value;
+                var list = document.getElementById("task-list");
+                var li = document.createElement("li");
+                const txt = document.createTextNode(text);
+                li.appendChild(txt);
+                list.appendChild(li);
+            }
+        </script>
+        <style>
+            .center{
+                margin: auto;
+                width: 50%;
+                padding: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="center">
+            <h1>Hello Kurwa World!</h1>
+            <label for="text-area">
+                Task input area:
+            </label>
+            <br>
+            <textarea id="text-area" rows="4" cols="30" >
+            New Task
+            </textarea>
+            <br>
+            <button onclick="addNew()">
+                Add
+            </button>
+            <br>
+            <label for="task-list"> Task list:</label>
+            <br>
+            <ol id="task-list" style="border: 1px black"></ol>
+        </div>
+
+    </body>
+</html>
