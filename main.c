@@ -1,22 +1,32 @@
 #include <Ws2tcpip.h>
 #include <corecrt.h>
+#include <minwindef.h>
+#include <processthreadsapi.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <synchapi.h>
+#include <winbase.h>
 #include <winsock2.h>
 #include <string.h>
 #include <errno.h>
+#include <windows.h>
 
 #define STRINGIFY(T) #T
 #define DEFAULT_PORT "8080"
 #define DEFAULT_BUFLEN 1024
 #define DEFAULT_RESPONSE_FILE "./index.html"
+#define MAX_THREADS 4
+
+HANDLE threads[MAX_THREADS] = {NULL};
+size_t thread_p = 0;
 
 char* response_html = NULL;
 size_t response_len;
 
 errno_t load_response_html(const char* path, char** result_html, size_t* len);
 int serve_connection(SOCKET client_socket);
+DWORD WINAPI connection_thread(void* data);
 
 
 int main(){
@@ -72,7 +82,7 @@ int main(){
     freeaddrinfo(a_info);
     
     printf("Listening for connection...\n");
-    //while(0){
+    while(TRUE){
         if((result = listen(listen_socket, SOMAXCONN)) == SOCKET_ERROR){
             fprintf(stderr, "Listen failed with error: %d\n", WSAGetLastError());
             closesocket(listen_socket);
@@ -88,16 +98,19 @@ int main(){
             WSACleanup();
             return 1;
         }
-        serve_connection(client_socket);
-        if((result = shutdown(client_socket, SD_SEND)) == SOCKET_ERROR){
-            fprintf(stderr, "shutdown failed: %d\n", WSAGetLastError());
-            closesocket(client_socket);
-            WSACleanup();
-            return 1;
+
+        if(thread_p < MAX_THREADS){
+            threads[thread_p++] = CreateThread(NULL, 0, connection_thread, (void*)client_socket, 0, NULL);
+        } else {
+            DWORD res = WaitForMultipleObjects(
+                MAX_THREADS, 
+                threads, 
+                FALSE, 
+                INFINITE);
+            DWORD index = res - WAIT_OBJECT_0;
+            threads[index] = CreateThread(NULL, 0, connection_thread, (void*)client_socket, 0, NULL);
         }
-        // if(serve_connection(client_socket) != 0)
-        //     return 1;
-    //}
+    }
     free(response_html);
     return 0;
 }
@@ -161,5 +174,18 @@ int serve_connection(SOCKET client_socket){
         }
     }
     while(i_res > 0);
+    return 0;
+}
+DWORD WINAPI connection_thread(void* data){
+
+    SOCKET client_socket = (SOCKET)data;
+    int result = 0;
+    serve_connection(client_socket);
+        if((result = shutdown(client_socket, SD_SEND)) == SOCKET_ERROR){
+            fprintf(stderr, "shutdown failed: %d\n", WSAGetLastError());
+            closesocket(client_socket);
+            WSACleanup();
+            return 1;
+        }
     return 0;
 }
